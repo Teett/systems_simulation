@@ -1,0 +1,134 @@
+---
+title: "Simulación de Sistemas - León XIII"
+author: "Daniel"
+date: "21/2/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+
+```{r}
+library(tidyverse)
+library(fitdistrplus)
+library(lubridate)
+```
+
+# Data reading
+
+```{r}
+raw_data <- read_csv("tiempos_ingresos_10k.csv")
+```
+
+## Study Interval
+
+```{r}
+raw_data %>%
+  summarize(min(entrada_triage))
+
+raw_data %>%
+  ggplot(aes(x = entrada_triage, fill = servicio)) +
+  geom_histogram(bins = 44, color = "black") +
+  labs(title = "Intervalo del estudio realizado por servicio")
+```
+
+Interval: 2020-01-07 12:51:12 to 2020-02-21 17:00:00
+
+## Hourly distribution by service
+
+```{r}
+raw_data %>%
+  ggplot(aes(x = hour(entrada_triage), fill = servicio)) +
+  geom_histogram(bins = 44, color = "black") +
+  labs(title = "Horas más concurridas por servicio")
+  
+```
+
+# Creation of the duration of events
+
+```{r}
+tiempos <- raw_data %>%
+  distinct(salida_taquilla, .keep_all = TRUE) %>% 
+  mutate(cola_triage = entrada_triage - salida_taquilla,
+         dur_triage = fin_triage - entrada_triage,
+         cola_servicio = entrada_servicio - fin_triage,
+         dur_servicio = salida_servicio - entrada_servicio) %>%
+  mutate_at(vars(cola_triage, dur_triage, cola_servicio, dur_servicio), as.numeric) %>% 
+  dplyr::select(atencion, servicio, servicio_detalle, cola_triage, 
+                dur_triage, cola_servicio, dur_servicio) %>%
+  filter_if(is.numeric, all_vars(. > 30)) %>% 
+  filter(cola_triage <= 43200, 
+         cola_servicio <= 129600) 
+```
+
+## Considerations
+
+- All the durations considered will last at least 30 seconds.
+- Triage queues higher than 12 hours will be discarded, the same goes for service time queues higher than 36 hours.
+
+# Correlations and density plots
+
+```{r}
+tiempos %>%
+  GGally::ggpairs(mapping = aes(alpha = 0.6), columns = 4:7)
+```
+
+All the event lengths seem to be highly uncorrelated with each other. At first glance some negative exponential distributions may appear.
+
+# Descriptive statistics
+
+```{r}
+tiempos %>% 
+  summary()
+```
+
+## Histograms
+
+```{r}
+tidy_tiempos <- tiempos %>% 
+  pivot_longer(cols = 4:7,
+               names_to = "clase",
+               values_to = "valor")
+
+tidy_tiempos %>% 
+  group_by(servicio)
+
+tidy_tiempos %>%
+  filter(clase != "cola_triage", clase != "dur_triage") %>% 
+  ggplot(aes(x = valor, fill = clase)) +
+  geom_histogram(color = "black", bins = 60) +
+  facet_wrap(~servicio + clase, scales = "free", ncol = 2) +
+  scale_x_continuous(labels = scales::comma) +
+  labs(title = "Distribuciones de los tiempos de cola y duraciones en los servicios")
+  
+
+tidy_tiempos %>%
+  filter(clase == "cola_triage" | clase == "dur_triage") %>% 
+  ggplot(aes(x = valor, fill = clase)) +
+  geom_histogram(color = "black", bins = 60) +
+  facet_wrap(~clase, scales = "free", nrow = 2) +
+  scale_x_continuous(labels = scales::comma) +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(title = "Distribuciones del tiempo en cola y la duración del triage")
+```
+
+
+# Distribution selection
+
+```{r}
+cullen_fray <- map(tiempos[,c(5,7)], descdist, discrete = FALSE, boot = 500)
+```
+
+
+# Saving the data
+
+```{r}
+tiempos %>% 
+  write_csv("tiempos.csv")
+```
+
