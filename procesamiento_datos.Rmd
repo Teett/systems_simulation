@@ -46,14 +46,20 @@ raw_data %>%
   ggplot(aes(x = hour(entrada_triage), fill = servicio)) +
   geom_histogram(bins = 44, color = "black") +
   labs(title = "Horas más concurridas por servicio")
+
+
   
 ```
 
 # Creation of the duration of events
 
 ```{r}
-tiempos <- raw_data %>%
-  distinct(salida_taquilla, .keep_all = TRUE) %>% 
+clean_data <- raw_data %>%
+  distinct(salida_taquilla, .keep_all = TRUE)
+
+tiempo_llegadas <- -diff(clean_data$salida_taquilla)
+
+tiempos <- clean_data %>% 
   mutate(cola_triage = entrada_triage - salida_taquilla,
          dur_triage = fin_triage - entrada_triage,
          cola_servicio = entrada_servicio - fin_triage,
@@ -121,14 +127,17 @@ tidy_tiempos %>%
 # Distribution selection
 
 ```{r}
-cullen_fray <- map(tiempos[,c(5,7)], descdist, discrete = FALSE, boot = 500)
+cullen_fray <- map(tiempos[,c(5,7)], descdist, discrete = FALSE, boot = 1000)
+cullen_fray_llegadas <- descdist(as.numeric(tiempo_llegadas), boot = 1000)
 ```
 
 
 # Saving the data
 
 ```{r}
-tiempos %>% 
-  write_csv("tiempos.csv")
+write_csv(tiempos, "datasets/tiempos.csv")
+write_lines(tiempo_llegadas, "tiempo_llegadas.txt")
+
+
 ```
 
