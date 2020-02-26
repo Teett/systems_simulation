@@ -136,8 +136,6 @@ cullen_fray_llegadas <- descdist(as.numeric(tiempo_llegadas), boot = 1000)
 
 ```{r}
 write_csv(tiempos, "datasets/tiempos.csv")
-write_lines(tiempo_llegadas, "tiempo_llegadas.txt")
-
-
+write_lines(tiempo_llegadas, "datasets/tiempo_llegadas.txt")
 ```
 
