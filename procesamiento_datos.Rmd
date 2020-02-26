@@ -46,9 +46,6 @@ raw_data %>%
   ggplot(aes(x = hour(entrada_triage), fill = servicio)) +
   geom_histogram(bins = 44, color = "black") +
   labs(title = "Horas más concurridas por servicio")
-
-
-  
 ```
 
 # Creation of the duration of events
@@ -72,6 +69,17 @@ tiempos <- clean_data %>%
          cola_servicio <= 43200) # Hasta 24 horas, validado con asistenciales
 ```
 
+## A tidy version of the clean data
+
+```{r}
+tidy_tiempos <- tiempos %>% 
+  pivot_longer(cols = 4:7,
+               names_to = "clase",
+               values_to = "valor")
+
+tidy_tiempos
+```
+
 ## Considerations
 
 - All the durations considered will last at least 30 seconds.
@@ -84,7 +92,7 @@ tiempos %>%
   GGally::ggpairs(mapping = aes(alpha = 0.6), columns = 4:7)
 ```
 
-All the event lengths seem to be highly uncorrelated with each other. At first glance some negative exponential distributions may appear.
+All the event lengths seem to be uncorrelated with each other. At first glance some negative exponential distributions may appear.
 
 # Descriptive statistics
 
@@ -96,14 +104,6 @@ tiempos %>%
 ## Histograms
 
 ```{r}
-tidy_tiempos <- tiempos %>% 
-  pivot_longer(cols = 4:7,
-               names_to = "clase",
-               values_to = "valor")
-
-tidy_tiempos %>% 
-  group_by(servicio)
-
 tidy_tiempos %>%
   filter(clase != "cola_triage", clase != "dur_triage") %>% 
   ggplot(aes(x = valor, fill = clase)) +
@@ -130,6 +130,157 @@ tidy_tiempos %>%
 cullen_fray <- map(tiempos[,c(5,7)], descdist, discrete = FALSE, boot = 1000)
 cullen_fray_llegadas <- descdist(as.numeric(tiempo_llegadas), boot = 1000)
 ```
+
+Distributions will only be fitted to the duration of the services, as the queues are of no interest, but rather an output of the discrete event simulation.
+
+# Distribution fitting
+
+## Triage duration
+
+Exponential distribution, gamma distribution and lognormal distribution are good candiadates for the data based on the kurtosis (`r cullen_fray$dur_triage$kurtosis`) and skewness (`r cullen_fray$dur_triage$skewness`) of the data. 
+
+### Exponential distribution
+
+```{r}
+fit_triage_exp <- fitdist(tiempos$dur_triage, distr = "exp", method = "mle")
+fit_triage_exp
+plot(fit_triage_exp)
+```
+
+Null hyphotesis rejected based on the Q-Q plot, the data can't possibly be represented by an exponential distribution.
+
+### Gamma distribution
+
+```{r}
+fit_triage_gamma <- fitdist(tiempos$dur_triage, distr = "gamma", method = "mle")
+fit_triage_gamma
+plot(fit_triage_gamma)
+```
+
+Null hyphotesis could be rejected, need further testing.
+
+### Lognormal
+
+```{r}
+fit_triage_lognormal <- fitdist(tiempos$dur_triage, distr = "lnorm", method = "mle")
+fit_triage_lognormal
+plot(fit_triage_lognormal)
+```
+
+Data is definitely lognormal, need to conduct formal hypothesis testing here.
+
+## Service duration
+
+The services are individual, so an aggregation of these doesn't seem appropiate at all. The individual services are:
+
+```{r, echo=FALSE}
+tiempos %>% 
+  count(servicio_detalle, sort = T)
+```
+
+A general try anyway:
+
+Gamma distribution and lognormal distribution could be good candiadates for the data based on the kurtosis (`r cullen_fray$dur_servicio$kurtosis`) and skewness (`r cullen_fray$dur_servicio$skewness`) of the data using Cullen and Frey's graphical method.  
+
+### Gamma distribution
+
+Need an scaling factor for the gamma to work, **need to reference this.**
+
+```{r}
+fit_servicio_gamma <- fitdist(tiempos$dur_servicio/250, distr = "gamma", method = "mle")
+fit_servicio_gamma
+plot(fit_servicio_gamma)
+```
+
+Gamma distribution doesn't seem to work very well with this data. May need more tunning. 
+
+### Lognormal distribution
+
+```{r}
+fit_servicio_lognormal <- fitdist(tiempos$dur_servicio, distr = "lnorm", method = "mle")
+fit_servicio_lognormal
+plot(fit_servicio_lognormal)
+```
+
+Lognormal distribution may work, need further verification. Theorically there is no distribution that can fit these data, as there are distinguishable categories that behave differently inside the data. Separation by service is needed.
+
+## Camillas SAI Adultos
+
+```{r}
+tiempos_SAI <- tiempos %>% 
+  filter(servicio_detalle == "Camillas SAI Adultos")
+
+descdist(as.numeric(tiempos_SAI$dur_servicio), boot = 500)
+```
+
+### Exponential
+
+```{r}
+fit_SAI_exp <- fitdist(tiempos_SAI$dur_servicio/250, distr = "exp", method = "mle")
+fit_SAI_exp
+plot(fit_SAI_exp)
+```
+
+### Lognormal
+
+```{r}
+fit_SAI_lognormal <- fitdist(tiempos_SAI$dur_servicio, distr = "lnorm", method = "mle")
+fit_SAI_lognormal
+plot(fit_SAI_lognormal)
+```
+
+### Gamma distribution
+
+Need an scaling factor for the gamma to work, **need to reference this.**
+
+```{r}
+fit_SAI_gamma <- fitdist(tiempos_SAI$dur_servicio/250, distr = "gamma", method = "mle")
+fit_SAI_gamma
+plot(fit_SAI_gamma)
+```
+
+SAI seems to be Gamma!
+
+## Traumas Urgencias
+
+```{r}
+tiempos_trauma <- tiempos %>% 
+  filter(servicio_detalle == "Traumas Urgencias")
+
+descdist(as.numeric(tiempos_trauma$dur_servicio), boot = 500)
+```
+
+### Exponential
+
+```{r}
+fit_trauma_exp <- fitdist(tiempos_trauma$dur_servicio/250, distr = "exp", method = "mle")
+fit_trauma_exp
+plot(fit_trauma_exp)
+```
+
+No.
+
+### Lognormal
+
+```{r}
+fit_trauma_lognormal <- fitdist(tiempos_trauma$dur_servicio, distr = "lnorm", method = "mle")
+fit_trauma_lognormal
+plot(fit_trauma_lognormal)
+```
+
+No.
+
+### Gamma distribution
+
+Need an scaling factor for the gamma to work, **need to reference this.**
+
+```{r}
+fit_trauma_gamma <- fitdist(tiempos_trauma$dur_servicio/250, distr = "gamma", method = "mle")
+fit_trauma_gamma
+plot(fit_trauma_gamma)
+```
+
+No.
 
 
 # Saving the data
