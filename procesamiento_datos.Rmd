@@ -57,7 +57,7 @@ raw_data %>%
 clean_data <- raw_data %>%
   distinct(salida_taquilla, .keep_all = TRUE)
 
-tiempo_llegadas <- -diff(clean_data$salida_taquilla)
+tiempo_llegadas <- diff(sort(clean_data$salida_taquilla))
 
 tiempos <- clean_data %>% 
   mutate(cola_triage = entrada_triage - salida_taquilla,
