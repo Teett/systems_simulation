@@ -22,7 +22,7 @@ library(lubridate)
 # Data reading
 
 ```{r}
-raw_data <- read_csv("tiempos_ingresos_10k.csv")
+raw_data <- read_csv("datasets/tiempos_ingresos_10k.csv")
 ```
 
 ## Study Interval
@@ -61,9 +61,9 @@ tiempos <- raw_data %>%
   mutate_at(vars(cola_triage, dur_triage, cola_servicio, dur_servicio), as.numeric) %>% 
   dplyr::select(atencion, servicio, servicio_detalle, cola_triage, 
                 dur_triage, cola_servicio, dur_servicio) %>%
-  filter_if(is.numeric, all_vars(. > 30)) %>% 
-  filter(cola_triage <= 43200, 
-         cola_servicio <= 129600) 
+  filter_if(is.numeric, all_vars(. > 10)) %>% # Validado con asistenciales
+  filter(cola_triage <= 14400, # Hasta 4 horas, validado con doctores de urgencias 
+         cola_servicio <= 43200) # Hasta 24 horas, validado con asistenciales
 ```
 
 ## Considerations
