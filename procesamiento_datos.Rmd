@@ -46,9 +46,11 @@ raw_data %>%
   summarize(min(entrada_triage))
 
 raw_data %>%
-  ggplot(aes(x = entrada_triage, fill = servicio)) +
-  geom_histogram(bins = 44, color = "black") +
-  labs(title = "Intervalo del estudio realizado por servicio")
+  filter(servicio == "Urgencias" | servicio == "Urgencias Pediatria") %>% 
+  ggplot(aes(x = entrada_triage)) +
+  geom_histogram(bins = 44, color = "black", fill = "skyblue") +
+  labs(title = "Intervalo del estudio realizado por servicio",
+       x = "Fecha triaje")
 ```
 
 Interval: 2020-01-07 12:51:12 to 2020-02-21 17:00:00
@@ -117,26 +119,114 @@ tiempos %>%
 
 ## Histograms
 
-```{r}
-tidy_tiempos %>%
-  filter(clase != "cola_triage", clase != "dur_triage") %>% 
-  ggplot(aes(x = valor, fill = clase)) +
-  geom_histogram(color = "black", bins = 60) +
-  facet_wrap(~servicio + clase, scales = "free", ncol = 2) +
-  scale_x_continuous(labels = scales::comma) +
-  labs(title = "Distribuciones de los tiempos de cola y duraciones en los servicios")
-  
+Generales
 
-tidy_tiempos %>%
-  filter(clase == "cola_triage" | clase == "dur_triage") %>% 
+```{r}
+triaje <- tidy_tiempos %>%
+  filter(clase == "cola_triage" | clase == "dur_triage") 
+
+triaje %>% 
   ggplot(aes(x = valor, fill = clase)) +
   geom_histogram(color = "black", bins = 60) +
   facet_wrap(~clase, scales = "free", nrow = 2) +
   scale_x_continuous(labels = scales::comma) +
   scale_fill_brewer(palette = "Dark2") +
-  labs(title = "Distribuciones del tiempo en cola y la duración del triage")
+    labs(title = "Triaje",
+     subtitle = "Distribuciones de los tiempos de cola y duraciones",
+     x = "Duración (s)")
+
+triaje %>% 
+  filter(clase == "dur_triage") %>% 
+  summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+  
 ```
 
+### SAI Adultos
+
+```{r}
+sai <- tidy_tiempos %>% 
+  filter(servicio_detalle == "Camillas SAI Adultos",
+         clase == "cola_servicio" | clase == "dur_servicio")
+
+sai %>% 
+  ggplot(aes(x = valor, fill = clase)) +
+  geom_histogram(color = "black", bins = 35) +
+  facet_wrap(~servicio_detalle + clase, scales = "free_x", ncol = 2) +
+  scale_x_continuous(labels = scales::comma) +
+  labs(title = "SAI Adultos",
+    subtitle = "Distribuciones de los tiempos de cola y duraciones en los servicios",
+    x = "Duración (s)")
+
+sai %>%
+  filter(clase == "dur_servicio") %>% 
+  summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+```
+
+### Trauma
+
+```{r}
+trauma <- tidy_tiempos %>% 
+  filter(servicio_detalle == "Traumas Urgencias",
+         clase == "cola_servicio" | clase == "dur_servicio") 
+
+trauma %>% 
+  ggplot(aes(x = valor, fill = clase)) +
+  geom_histogram(color = "black", bins = 35) +
+  facet_wrap(~servicio_detalle + clase, scales = "free_x", ncol = 2) +
+  scale_x_continuous(labels = scales::comma) +
+  labs(title = "Traumas de urgencias",
+    subtitle = "Distribuciones de los tiempos de cola y duraciones en los servicios",
+    x = "Duración (s)")
+
+trauma %>%
+  filter(clase == "dur_servicio") %>% 
+  summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+```
+
+### Consultorio adultos
+
+
+```{r}
+adultos <- tidy_tiempos %>% 
+  filter(servicio == "Urgencias",
+         servicio_detalle != "Traumas Urgencias",
+         servicio_detalle != "Camillas SAI Adultos",
+         clase == "cola_servicio" | clase == "dur_servicio")
+
+adultos %>% 
+  ggplot(aes(x = valor, fill = clase)) +
+  geom_histogram(color = "black", bins = 35) +
+  facet_wrap(~servicio + clase, scales = "free_x", ncol = 2) +
+  scale_x_continuous(labels = scales::comma) +
+  labs(title = "Consultorios de urgencias adultos",
+    subtitle = "Distribuciones de los tiempos de cola y duraciones en los servicios",
+    x = "Duración (s)")
+
+adultos %>%
+  filter(clase == "dur_servicio") %>% 
+  summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+```
+
+### Pediatría
+
+```{r}
+pediatria <- tidy_tiempos %>% 
+  filter(servicio_detalle == "ERA Pediatria",
+         clase == "cola_servicio" | clase == "dur_servicio") 
+
+pediatria %>% 
+  ggplot(aes(x = valor, fill = clase)) +
+  geom_histogram(color = "black", bins = 35) +
+  facet_wrap(~servicio + clase, scales = "free_x", ncol = 2) +
+  scale_x_continuous(labels = scales::comma) +
+  labs(title = "Consultorios de urgencias Pediatría",
+    subtitle = "Distribuciones de los tiempos de cola y duraciones en los servicios",
+    x = "Duración (s)")
+
+pediatria %>%
+  filter(clase == "dur_servicio") %>% 
+  summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+```
 
 # Distribution selection
 
@@ -189,7 +279,7 @@ The services are individual, so an aggregation of these doesn't seem appropiate 
 
 ```{r, echo=FALSE}
 tiempos %>% 
-  count(servicio_detalle, sort = T)
+  count(servicio, sort = T) %>% View("servicio")
 ```
 
 A general try anyway:
@@ -334,9 +424,54 @@ fit_pediatria_gamma <- fitdist(tiempos_pediatria$dur_servicio/250, distr = "gamm
 fit_pediatria_gamma
 plot(fit_pediatria_gamma)
 ```
+ 
+No.
+
+Con triangular se podría:
+fit_pediatria_triangular <- fitdist(tiempos_pediatria$dur_servicio, distr = "triang", method = "mge",  start = list(min=0, mode=25000,max=100000), gof = "CvM")
+
+## Consultorios adultos
+
+```{r}
+tiempos_adultos <- tiempos %>% 
+  filter(servicio == "Urgencias",
+         servicio_detalle != "Traumas Urgencias",
+         servicio_detalle != "Camillas SAI Adultos")
+
+descdist(as.numeric(tiempos_adultos$dur_servicio), boot = 500)
+```
+
+### Exponential
+
+```{r}
+fit_adultos_exp <- fitdist(tiempos_adultos$dur_servicio/250, distr = "exp", method = "mle")
+fit_adultos_exp
+plot(fit_adultos_exp)
+```
 
 No.
 
+### Lognormal
+
+```{r}
+fit_adultos_lognormal <- fitdist(tiempos_adultos$dur_servicio, distr = "lnorm", method = "mle")
+fit_adultos_lognormal
+plot(fit_adultos_lognormal)
+```
+
+Parece que sí
+
+### Gamma distribution
+
+Need an scaling factor for the gamma to work, **need to reference this.**
+
+```{r}
+fit_adultos_gamma <- fitdist(tiempos_adultos$dur_servicio/300, distr = "gamma", method = "mle")
+fit_adultos_gamma
+plot(fit_adultos_gamma)
+```
+
+No
 
 # Saving the data
 
