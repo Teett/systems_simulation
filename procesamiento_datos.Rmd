@@ -1,8 +1,14 @@
 ---
-title: "Simulación de Sistemas - León XIII"
+title: "Discrete event Systems simulation - León XIII Clinic - Emergency department"
 author: "Daniel"
 date: "21/2/2020"
-output: html_document
+output: 
+  html_document: 
+    df_print: kable
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_float: true
 editor_options: 
   chunk_output_type: console
 ---
@@ -11,9 +17,13 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+This project aims to fit distributions to the services inside the emergency department of the León XIII clinic, located in Medellín - Colombia using real data from the users and their arrivals. Extensive use of the `fitdistrplus` package is made in the development of this methodology.
+
+After the distributions are fitted, discrete event simulation will be performed using Simul8 to stablish performance measures and prescriptive analytics that could improve the decision making process. 
+
 # Libraries
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(fitdistrplus)
 library(lubridate)
@@ -21,11 +31,9 @@ library(lubridate)
 
 # Data reading
 
-Admision office dynamics could be hidden inside the data repetition, need to further assess.
+Admision office dynamics could be hidden inside the data repetition, need to assessment including the triages.
 
 ```{r}
-
-
 datos_complementarios <- read_csv2("datasets/tiempos_ingresos_15k.csv", locale = readr::locale(encoding = "latin1")) %>% 
   mutate(servicio = as_factor(servicio),
          servicio_detalle = as_factor(servicio_detalle),
@@ -36,8 +44,10 @@ raw_data <- read_csv("datasets/tiempos_ingresos_10k.csv") %>%
   inner_join(datos_complementarios %>%
                distinct(atencion, .keep_all = TRUE) %>% 
               dplyr::select(atencion, nivelPrioridad))
-
+head(raw_data)
 ```
+
+These two datasets are joined because in the first extraction of raw_data, the triage type information was not on the SQL query, therefore a later query called `datos_complementarios` was made, that was bigger than the original raw_data and included the triage information. The original data remained unaltered and the triage information was joined to it.
 
 ## Study Interval
 
@@ -93,10 +103,11 @@ tidy_tiempos <- tiempos %>%
                names_to = "clase",
                values_to = "valor")
 
-tidy_tiempos
+tidy_tiempos %>% 
+  head()
 ```
 
-## Considerations
+### Considerations
 
 - All the durations considered will last at least 30 seconds.
 - Triage queues higher than 12 hours will be discarded, the same goes for service time queues higher than 36 hours.
@@ -288,7 +299,7 @@ The services are individual, so an aggregation of these doesn't seem appropiate 
 
 ```{r, echo=FALSE}
 tiempos %>% 
-  count(servicio, sort = T) %>% View("servicio")
+  count(servicio, sort = T)
 ```
 
 A general try anyway:
@@ -436,8 +447,10 @@ plot(fit_pediatria_gamma)
  
 No.
 
-Con triangular se podría:
-fit_pediatria_triangular <- fitdist(tiempos_pediatria$dur_servicio, distr = "triang", method = "mge",  start = list(min=0, mode=25000,max=100000), gof = "CvM")
+In case a triangular distribution was needed you could do:
+
+`fit_pediatria_triangular <- fitdist(tiempos_pediatria$dur_servicio, distr = "triang", method = "mge",  start = list(min=0, mode=25000,max=100000), gof = "CvM")`
+
 
 ## Consultorios adultos
 
@@ -511,7 +524,7 @@ fit_adultos_lognormal
 plot(fit_adultos_lognormal)
 ```
 
-Parece que sí
+This will be the selected distribution for this variable. May need to consider the kind of triage to correctly estimate a distribution.
 
 ### Gamma distribution
 
@@ -535,7 +548,8 @@ fit_llegadas_weibull
 plot(fit_llegadas_weibull)
 ```
 
-Selected by default...
+This will be the selected distribution for this variable. May need to consider the kind of triage to correctly estimate a distribution.
+
 
 ### Gamma distribution
 
@@ -553,7 +567,6 @@ Null hyphotesis could be rejected, need further testing.
 fit_llegadas_lognormal <- fitdist(as.numeric(tiempo_llegadas)/200, distr = "lnorm", method = "mle")
 fit_llegadas_lognormal
 plot(fit_llegadas_lognormal)
-# Saving the data
 ```
 
 
@@ -565,7 +578,7 @@ fit_llegadas_exp
 plot(fit_llegadas_exp)
 ```
 
-```{r}
+```{r, include=FALSE}
 write_csv(tiempos, "datasets/tiempos.csv")
 write_lines(tiempo_llegadas, "datasets/tiempo_llegadas.txt")
 ```
