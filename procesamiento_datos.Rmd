@@ -21,8 +21,10 @@ library(lubridate)
 
 # Data reading
 
+Admision office dynamics could be hidden inside the data repetition, need to further assess.
+
 ```{r}
-raw_data <- read_csv("datasets/tiempos_ingresos_10k.csv")
+raw_data <- read_csv2("datasets/tiempos_ingresos_15k.csv", col_types = "cfffccTTTTT")
 ```
 
 ## Study Interval
