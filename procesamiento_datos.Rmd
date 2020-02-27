@@ -49,8 +49,8 @@ raw_data %>%
   filter(servicio == "Urgencias" | servicio == "Urgencias Pediatria") %>% 
   ggplot(aes(x = entrada_triage)) +
   geom_histogram(bins = 44, color = "black", fill = "skyblue") +
-  labs(title = "Intervalo del estudio realizado por servicio",
-       x = "Fecha triaje")
+  labs(title = "Intervalo del estudio realizado por fecha",
+       x = "Fecha del registro")
 ```
 
 Interval: 2020-01-07 12:51:12 to 2020-02-21 17:00:00
