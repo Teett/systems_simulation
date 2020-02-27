@@ -31,7 +31,7 @@ library(lubridate)
 
 # Data reading
 
-Admision office dynamics could be hidden inside the data repetition, need to assessment including the triages.
+Admission office dynamics could be hidden inside the data repetition, need to assess whether including the triages makes any difference whatsoever.
 
 ```{r}
 datos_complementarios <- read_csv2("datasets/tiempos_ingresos_15k.csv", locale = readr::locale(encoding = "latin1")) %>% 
@@ -47,7 +47,7 @@ raw_data <- read_csv("datasets/tiempos_ingresos_10k.csv") %>%
 head(raw_data)
 ```
 
-These two datasets are joined because in the first extraction of raw_data, the triage type information was not on the SQL query, therefore a later query called `datos_complementarios` was made, that was bigger than the original raw_data and included the triage information. The original data remained unaltered and the triage information was joined to it.
+These two datasets are joined because in the first extraction of raw_data performed with the IT department, the triage type information was not on the initial SQL query, therefore a later query called `datos_complementarios` was made with the triage information on it, that was bigger than the original raw_data and included the triage information and more entries. The original data remained unaltered and the triage information was joined to it (10000 observations).
 
 ## Study Interval
 
@@ -109,8 +109,8 @@ tidy_tiempos %>%
 
 ### Considerations
 
-- All the durations considered will last at least 30 seconds.
-- Triage queues higher than 12 hours will be discarded, the same goes for service time queues higher than 36 hours.
+- All the durations considered will last at least 10 seconds, based on medical expert criteria from the clinic.
+- Triage queues higher than 4 hours will be discarded, the same goes for service time queues higher than 24 hours, based on medical expert criteria.
 
 # Correlations and density plots
 
@@ -119,7 +119,7 @@ tiempos %>%
   GGally::ggpairs(mapping = aes(alpha = 0.6), columns = 4:7)
 ```
 
-All the event lengths seem to be uncorrelated with each other. At first glance some negative exponential distributions may appear.
+All the event lengths seem to be uncorrelated with each other. At first glance some exponential distributions may appear.
 
 # Descriptive statistics
 
@@ -252,12 +252,16 @@ pediatria %>%
 
 ```{r}
 cullen_fray <- map(tiempos[,c(5,7)], descdist, discrete = FALSE, boot = 1000)
+cullen_fray
 cullen_fray_llegadas <- descdist(as.numeric(tiempo_llegadas), boot = 1000)
+cullen_fray_llegadas
 ```
 
 Distributions will only be fitted to the duration of the services, as the queues are of no interest, but rather an output of the discrete event simulation.
 
-# Distribution fitting
+# Distribution fitting and hypothesis testing
+
+In this part, several distribution will be tried for every service, based on the recommendations obtained with the Cullen and Frey method, further reference can be obtained in: Cullen AC and Frey HC (1999), Probabilistic techniques in exposure assessment. Plenum Press, USA, pp. 81-159.
 
 ## Triage duration
 
@@ -302,13 +306,13 @@ tiempos %>%
   count(servicio, sort = T)
 ```
 
-A general try anyway:
+A general try to the aggregated services: Note that this is incorrect, as triage dynamics are hidden inside the data.
 
 Gamma distribution and lognormal distribution could be good candiadates for the data based on the kurtosis (`r cullen_fray$dur_servicio$kurtosis`) and skewness (`r cullen_fray$dur_servicio$skewness`) of the data using Cullen and Frey's graphical method.  
 
 ### Gamma distribution
 
-Need an scaling factor for the gamma to work, **need to reference this.**
+Changing the scale of the data doesn't affect it's distribution as long as it remains positive and every number is scaled. This helps the Maximum likelihood Stimation to converge.
 
 ```{r}
 fit_servicio_gamma <- fitdist(tiempos$dur_servicio/250, distr = "gamma", method = "mle")
@@ -326,7 +330,9 @@ fit_servicio_lognormal
 plot(fit_servicio_lognormal)
 ```
 
-Lognormal distribution may work, need further verification. Theorically there is no distribution that can fit these data, as there are distinguishable categories that behave differently inside the data. Separation by service is needed.
+Lognormal distribution may work, need further verification. Theorically there is no distribution that can fit these data, as there are distinguishable categories that behave differently inside the data. Separation by service and triage is needed.
+
+Therefore, the following code creates subsets that only include the particular services of interest.
 
 ## Camillas SAI Adultos
 
