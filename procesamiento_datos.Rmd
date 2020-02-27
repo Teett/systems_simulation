@@ -24,7 +24,19 @@ library(lubridate)
 Admision office dynamics could be hidden inside the data repetition, need to further assess.
 
 ```{r}
-raw_data <- read_csv2("datasets/tiempos_ingresos_15k.csv", col_types = "cfffccTTTTT")
+
+
+datos_complementarios <- read_csv2("datasets/tiempos_ingresos_15k.csv", locale = readr::locale(encoding = "latin1")) %>% 
+  mutate(servicio = as_factor(servicio),
+         servicio_detalle = as_factor(servicio_detalle),
+         nivelPrioridad = as_factor(nivelPrioridad)) %>% 
+  mutate_at(vars(salida_taquilla, entrada_triage, fin_triage, entrada_servicio, salida_servicio), as_datetime)
+
+raw_data <- read_csv("datasets/tiempos_ingresos_10k.csv") %>% 
+  inner_join(datos_complementarios %>%
+               distinct(atencion, .keep_all = TRUE) %>% 
+              dplyr::select(atencion, nivelPrioridad))
+
 ```
 
 ## Study Interval
@@ -280,6 +292,47 @@ Need an scaling factor for the gamma to work, **need to reference this.**
 fit_trauma_gamma <- fitdist(tiempos_trauma$dur_servicio/250, distr = "gamma", method = "mle")
 fit_trauma_gamma
 plot(fit_trauma_gamma)
+```
+
+No.
+
+## ERA Pediatria
+
+```{r}
+tiempos_pediatria <- tiempos %>% 
+  filter(servicio_detalle == "ERA Pediatria")
+
+descdist(as.numeric(tiempos_pediatria$dur_servicio), boot = 500)
+```
+
+### Exponential
+
+```{r}
+fit_pediatria_exp <- fitdist(tiempos_pediatria$dur_servicio/250, distr = "exp", method = "mle")
+fit_pediatria_exp
+plot(fit_pediatria_exp)
+```
+
+No.
+
+### Lognormal
+
+```{r}
+fit_pediatria_lognormal <- fitdist(tiempos_pediatria$dur_servicio, distr = "lnorm", method = "mle")
+fit_pediatria_lognormal
+plot(fit_pediatria_lognormal)
+```
+
+Parece que sí
+
+### Gamma distribution
+
+Need an scaling factor for the gamma to work, **need to reference this.**
+
+```{r}
+fit_pediatria_gamma <- fitdist(tiempos_pediatria$dur_servicio/250, distr = "gamma", method = "mle")
+fit_pediatria_gamma
+plot(fit_pediatria_gamma)
 ```
 
 No.
