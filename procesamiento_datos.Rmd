@@ -119,6 +119,15 @@ tiempos %>%
 
 ## Histograms
 
+### Tiempo entre llegadas
+
+```{r}
+tibble(tiempo_llegadas) %>%
+  ggplot(aes(x = tiempo_llegadas)) +
+  geom_histogram(color = "black", fill = "skyblue")
+```
+
+
 Generales
 
 ```{r}
@@ -473,7 +482,88 @@ plot(fit_adultos_gamma)
 
 No
 
+## Tiempo entre llegadas
+
+```{r}
+tiempos_adultos <- tiempos %>% 
+  filter(servicio == "Urgencias",
+         servicio_detalle != "Traumas Urgencias",
+         servicio_detalle != "Camillas SAI Adultos")
+
+descdist(as.numeric(tiempos_adultos$dur_servicio), boot = 500)
+```
+
+### Exponential
+
+```{r}
+fit_adultos_exp <- fitdist(tiempos_adultos$dur_servicio/250, distr = "exp", method = "mle")
+fit_adultos_exp
+plot(fit_adultos_exp)
+```
+
+No.
+
+### Lognormal
+
+```{r}
+fit_adultos_lognormal <- fitdist(tiempos_adultos$dur_servicio, distr = "lnorm", method = "mle")
+fit_adultos_lognormal
+plot(fit_adultos_lognormal)
+```
+
+Parece que sí
+
+### Gamma distribution
+
+Need an scaling factor for the gamma to work, **need to reference this.**
+
+```{r}
+fit_adultos_gamma <- fitdist(tiempos_adultos$dur_servicio/300, distr = "gamma", method = "mle")
+fit_adultos_gamma
+plot(fit_adultos_gamma)
+```
+
+No
+
+## Tiempo llegadas
+
+### Weibull distribution
+
+```{r}
+fit_llegadas_weibull <- fitdist(as.numeric(tiempo_llegadas)/250, distr = "weibull")
+fit_llegadas_weibull
+plot(fit_llegadas_weibull)
+```
+
+Selected by default...
+
+### Gamma distribution
+
+```{r}
+fit_llegadas_gamma <- fitdist(as.numeric(tiempo_llegadas)/200, distr = "gamma", method = "mle")
+fit_llegadas_gamma
+plot(fit_llegadas_gamma)
+```
+
+Null hyphotesis could be rejected, need further testing.
+
+### Lognormal
+
+```{r}
+fit_llegadas_lognormal <- fitdist(as.numeric(tiempo_llegadas)/200, distr = "lnorm", method = "mle")
+fit_llegadas_lognormal
+plot(fit_llegadas_lognormal)
 # Saving the data
+```
+
+
+### Exponential distribution
+
+```{r}
+fit_llegadas_exp <- fitdist(as.numeric(tiempo_llegadas)/250, distr = "exp")
+fit_llegadas_exp
+plot(fit_llegadas_exp)
+```
 
 ```{r}
 write_csv(tiempos, "datasets/tiempos.csv")
