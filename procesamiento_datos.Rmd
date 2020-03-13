@@ -248,24 +248,13 @@ pediatria %>%
   summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
 ```
 
-# Distribution selection
-
-```{r}
-cullen_fray <- map(tiempos[,c(5,7)], descdist, discrete = FALSE, boot = 1000)
-cullen_fray
-cullen_fray_llegadas <- descdist(as.numeric(tiempo_llegadas), boot = 1000)
-cullen_fray_llegadas
-```
-
 Distributions will only be fitted to the duration of the services, as the queues are of no interest, but rather an output of the discrete event simulation.
 
 # Distribution fitting and hypothesis testing
 
 In this part, several distribution will be tried for every service, based on the recommendations obtained with the Cullen and Frey method, further reference can be obtained in: Cullen AC and Frey HC (1999), Probabilistic techniques in exposure assessment. Plenum Press, USA, pp. 81-159.
 
-## Triage duration
-
-Exponential distribution, gamma distribution and lognormal distribution are good candiadates for the data based on the kurtosis (`r cullen_fray$dur_triage$kurtosis`) and skewness (`r cullen_fray$dur_triage$skewness`) of the data. 
+## Duración Triaje
 
 ### Exponential distribution
 
@@ -297,43 +286,6 @@ plot(fit_triage_lognormal)
 
 Data is definitely lognormal, need to conduct formal hypothesis testing here.
 
-## Service duration
-
-The services are individual, so an aggregation of these doesn't seem appropiate at all. The individual services are:
-
-```{r, echo=FALSE}
-tiempos %>% 
-  count(servicio, sort = T)
-```
-
-A general try to the aggregated services: Note that this is incorrect, as triage dynamics are hidden inside the data.
-
-Gamma distribution and lognormal distribution could be good candiadates for the data based on the kurtosis (`r cullen_fray$dur_servicio$kurtosis`) and skewness (`r cullen_fray$dur_servicio$skewness`) of the data using Cullen and Frey's graphical method.  
-
-### Gamma distribution
-
-Changing the scale of the data doesn't affect it's distribution as long as it remains positive and every number is scaled. This helps the Maximum likelihood Stimation to converge.
-
-```{r}
-fit_servicio_gamma <- fitdist(tiempos$dur_servicio/250, distr = "gamma", method = "mle")
-fit_servicio_gamma
-plot(fit_servicio_gamma)
-```
-
-Gamma distribution doesn't seem to work very well with this data. May need more tunning. 
-
-### Lognormal distribution
-
-```{r}
-fit_servicio_lognormal <- fitdist(tiempos$dur_servicio, distr = "lnorm", method = "mle")
-fit_servicio_lognormal
-plot(fit_servicio_lognormal)
-```
-
-Lognormal distribution may work, need further verification. Theorically there is no distribution that can fit these data, as there are distinguishable categories that behave differently inside the data. Separation by service and triage is needed.
-
-Therefore, the following code creates subsets that only include the particular services of interest.
-
 ## Camillas SAI Adultos
 
 ```{r}
@@ -346,10 +298,12 @@ descdist(as.numeric(tiempos_SAI$dur_servicio), boot = 500)
 ### Exponential
 
 ```{r}
-fit_SAI_exp <- fitdist(tiempos_SAI$dur_servicio/250, distr = "exp", method = "mle")
+fit_SAI_exp <- fitdist(tiempos_SAI$dur_servicio/1000, distr = "exp", method = "mle")
 fit_SAI_exp
 plot(fit_SAI_exp)
 ```
+
+The fit doesn't work anyway, so no need to think about it anyway, because the PDF will be the same for a scaled version.
 
 ### Lognormal
 
@@ -364,7 +318,7 @@ plot(fit_SAI_lognormal)
 Need an scaling factor for the gamma to work, **need to reference this.**
 
 ```{r}
-fit_SAI_gamma <- fitdist(tiempos_SAI$dur_servicio/250, distr = "gamma", method = "mle")
+fit_SAI_gamma <- fitdist(tiempos_SAI$dur_servicio, distr = "gamma", method = "mle", lower=c(0,0))
 fit_SAI_gamma
 plot(fit_SAI_gamma)
 ```
@@ -383,12 +337,12 @@ descdist(as.numeric(tiempos_trauma$dur_servicio), boot = 500)
 ### Exponential
 
 ```{r}
-fit_trauma_exp <- fitdist(tiempos_trauma$dur_servicio/250, distr = "exp", method = "mle")
+fit_trauma_exp <- fitdist(tiempos_trauma$dur_servicio/1000, distr = "exp", method = "mle")
 fit_trauma_exp
 plot(fit_trauma_exp)
 ```
 
-No.
+The fit doesn't work anyway, so no need to think about it anyway, because the PDF will be the same for a scaled version.
 
 ### Lognormal
 
@@ -402,10 +356,8 @@ No.
 
 ### Gamma distribution
 
-Need an scaling factor for the gamma to work, **need to reference this.**
-
 ```{r}
-fit_trauma_gamma <- fitdist(tiempos_trauma$dur_servicio/250, distr = "gamma", method = "mle")
+fit_trauma_gamma <- fitdist(tiempos_trauma$dur_servicio, distr = "gamma", method = "mle", lower=c(0,0))
 fit_trauma_gamma
 plot(fit_trauma_gamma)
 ```
@@ -424,12 +376,12 @@ descdist(as.numeric(tiempos_pediatria$dur_servicio), boot = 500)
 ### Exponential
 
 ```{r}
-fit_pediatria_exp <- fitdist(tiempos_pediatria$dur_servicio/250, distr = "exp", method = "mle")
+fit_pediatria_exp <- fitdist(tiempos_pediatria$dur_servicio/1000, distr = "exp", method = "mle")
 fit_pediatria_exp
 plot(fit_pediatria_exp)
 ```
 
-No.
+The fit doesn't work anyway, so no need to think about it anyway, because the PDF will be the same for a scaled version.
 
 ### Lognormal
 
@@ -443,10 +395,8 @@ Parece que sí
 
 ### Gamma distribution
 
-Need an scaling factor for the gamma to work, **need to reference this.**
-
 ```{r}
-fit_pediatria_gamma <- fitdist(tiempos_pediatria$dur_servicio/250, distr = "gamma", method = "mle")
+fit_pediatria_gamma <- fitdist(tiempos_pediatria$dur_servicio, distr = "gamma", method = "mle", lower=c(0,0))
 fit_pediatria_gamma
 plot(fit_pediatria_gamma)
 ```
@@ -471,13 +421,15 @@ descdist(as.numeric(tiempos_adultos$dur_servicio), boot = 500)
 
 ### Exponential
 
+Can I use a scaling factor and after that divide the rate parameter also?
+
 ```{r}
-fit_adultos_exp <- fitdist(tiempos_adultos$dur_servicio/250, distr = "exp", method = "mle")
+fit_adultos_exp <- fitdist(tiempos_adultos$dur_servicio/1000, distr = "exp", method = "mle")
 fit_adultos_exp
 plot(fit_adultos_exp)
 ```
 
-No.
+The fit doesn't work anyway, so no need to think about it anyway, because the PDF will be the same for a scaled version.
 
 ### Lognormal
 
@@ -491,65 +443,24 @@ Parece que sí
 
 ### Gamma distribution
 
-Need an scaling factor for the gamma to work, **need to reference this.**
-
 ```{r}
-fit_adultos_gamma <- fitdist(tiempos_adultos$dur_servicio/300, distr = "gamma", method = "mle")
+fit_adultos_gamma <- fitdist(tiempos_adultos$dur_servicio, distr = "gamma", method = "mle", lower=c(0,0))
 fit_adultos_gamma
 plot(fit_adultos_gamma)
 ```
-
-No
-
-## Tiempo entre llegadas
-
-```{r}
-tiempos_adultos <- tiempos %>% 
-  filter(servicio == "Urgencias",
-         servicio_detalle != "Traumas Urgencias",
-         servicio_detalle != "Camillas SAI Adultos")
-
-descdist(as.numeric(tiempos_adultos$dur_servicio), boot = 500)
-```
-
-### Exponential
-
-```{r}
-fit_adultos_exp <- fitdist(tiempos_adultos$dur_servicio/250, distr = "exp", method = "mle")
-fit_adultos_exp
-plot(fit_adultos_exp)
-```
-
-No.
-
-### Lognormal
-
-```{r}
-fit_adultos_lognormal <- fitdist(tiempos_adultos$dur_servicio, distr = "lnorm", method = "mle")
-fit_adultos_lognormal
-plot(fit_adultos_lognormal)
-```
-
-This will be the selected distribution for this variable. May need to consider the kind of triage to correctly estimate a distribution.
-
-### Gamma distribution
-
-Need an scaling factor for the gamma to work, **need to reference this.**
-
-```{r}
-fit_adultos_gamma <- fitdist(tiempos_adultos$dur_servicio/300, distr = "gamma", method = "mle")
-fit_adultos_gamma
-plot(fit_adultos_gamma)
-```
-
-No
 
 ## Tiempo llegadas
+
+```{r}
+cullen_fray_llegadas <- descdist(as.numeric(tiempo_llegadas), boot = 1000)
+cullen_fray_llegadas
+```
+
 
 ### Weibull distribution
 
 ```{r}
-fit_llegadas_weibull <- fitdist(as.numeric(tiempo_llegadas)/250, distr = "weibull")
+fit_llegadas_weibull <- fitdist(as.numeric(tiempo_llegadas), distr = "weibull", lower=c(0,0))
 fit_llegadas_weibull
 plot(fit_llegadas_weibull)
 ```
@@ -560,7 +471,7 @@ This will be the selected distribution for this variable. May need to consider t
 ### Gamma distribution
 
 ```{r}
-fit_llegadas_gamma <- fitdist(as.numeric(tiempo_llegadas)/200, distr = "gamma", method = "mle")
+fit_llegadas_gamma <- fitdist(as.numeric(tiempo_llegadas), distr = "gamma", method = "mle", lower=c(0,0))
 fit_llegadas_gamma
 plot(fit_llegadas_gamma)
 ```
@@ -570,7 +481,7 @@ Null hyphotesis could be rejected, need further testing.
 ### Lognormal
 
 ```{r}
-fit_llegadas_lognormal <- fitdist(as.numeric(tiempo_llegadas)/200, distr = "lnorm", method = "mle")
+fit_llegadas_lognormal <- fitdist(as.numeric(tiempo_llegadas), distr = "lnorm", method = "mle")
 fit_llegadas_lognormal
 plot(fit_llegadas_lognormal)
 ```
@@ -579,10 +490,11 @@ plot(fit_llegadas_lognormal)
 ### Exponential distribution
 
 ```{r}
-fit_llegadas_exp <- fitdist(as.numeric(tiempo_llegadas)/250, distr = "exp")
+fit_llegadas_exp <- fitdist(as.numeric(tiempo_llegadas/1000), distr = "exp")
 fit_llegadas_exp
 plot(fit_llegadas_exp)
 ```
+
 
 ```{r, include=FALSE}
 write_csv(tiempos, "datasets/tiempos.csv")
