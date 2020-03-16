@@ -189,7 +189,10 @@ sai %>%
 ```{r}
 trauma <- tidy_tiempos %>% 
   filter(servicio_detalle == "Traumas Urgencias",
-         clase == "cola_servicio" | clase == "dur_servicio") 
+         #valor < 50000,
+         #nivelPrioridad == "TRIAJE 5",
+         #clase == "cola_servicio" | 
+           clase == "dur_servicio") 
 
 trauma %>% 
   ggplot(aes(x = valor, fill = clase)) +
@@ -363,9 +366,11 @@ SAI seems to be Gamma!
 
 ```{r}
 tiempos_trauma <- tiempos %>% 
-  filter(servicio_detalle == "Traumas Urgencias")
+  filter(servicio_detalle == "Traumas Urgencias" 
+         & dur_servicio < 100000
+         )
 
-descdist(as.numeric(tiempos_trauma$dur_servicio), boot = 500)
+#descdist(as.numeric(tiempos_trauma$dur_servicio), boot = 500)
 ```
 
 ### Exponential
@@ -386,7 +391,7 @@ fit_trauma_lognormal
 plot(fit_trauma_lognormal)
 ```
 
-No.
+trauma seems to be lognormal.
 
 ### Gamma distribution
 
