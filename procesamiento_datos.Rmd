@@ -49,6 +49,8 @@ raw_data <- read_csv("datasets/tiempos_ingresos_10k.csv") %>%
                distinct(atencion, .keep_all = TRUE) %>% 
               dplyr::select(atencion, nivelPrioridad))
 head(raw_data)
+
+
 ```
 
 These two datasets are joined because in the first extraction of raw_data performed with the IT department, the triage type information was not on the initial SQL query, therefore a later query called `datos_complementarios` was made with the triage information on it, that was bigger than the original raw_data and included the triage information and more entries. The original data remained unaltered and the triage information was joined to it (10000 observations).
@@ -158,13 +160,36 @@ tiempos %>%
 ### Tiempo entre llegadas
 
 ```{r}
+scientific_10 <- function(x) {
+  parse(text=gsub("e", " %*% 10^", scales::scientific_format()(x)))
+}
+
 tibble(tiempo_llegadas) %>%
   ggplot(aes(x = tiempo_llegadas)) +
-  geom_histogram(color = "black", fill = "skyblue")
+  geom_histogram(color = "black", fill = "skyblue") +
+  labs(title = "Tiempo entre llegadas - TLL",
+     x = "Duración (s)",
+     y = "Frecuencia")
+
+tibble(tiempo_llegadas) %>%
+  ggplot(aes(x = tiempo_llegadas)) +
+  geom_histogram(aes(y = ..density..), color = "black", fill = "skyblue") +
+  stat_function(fun = dweibull, args = list(shape = 0.8926386, scale = 926.3388173),
+                aes(color = "Weibull shape = 0.897, scale = 926.339"), size = 1) +
+  scale_y_continuous(labels = scientific_10) +
+  labs(title = "Tiempo entre llegadas - TLL",
+     x = "Duración (s)",
+     y = "Densidad",
+     colour = "Distribución ajustada") +
+  theme(legend.position = "top")
+
+tibble(valor = tiempo_llegadas) %>% 
+summarize(media = mean(valor), mediana = median(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+
 ```
 
 
-Generales
+### Triaje
 
 ```{r}
 triaje <- tidy_tiempos %>%
@@ -181,8 +206,8 @@ triaje %>%
      x = "Duración (s)")
 
 triaje %>% 
-  filter(clase == "cola_triage") %>% 
-  summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+  filter(clase == "dur_triage") %>% 
+  summarize(media = mean(valor), mediana = median(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
   
 ```
 
@@ -204,7 +229,7 @@ sai %>%
 
 sai %>%
   filter(clase == "dur_servicio") %>% 
-  summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+  summarize(media = mean(valor), mediana = median(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
 ```
 
 ### Trauma
@@ -225,7 +250,7 @@ trauma %>%
 
 trauma %>%
   filter(clase == "dur_servicio") %>% 
-  summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+  summarize(media = mean(valor), mediana = median(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
 ```
 
 ### Consultorio adultos
@@ -249,7 +274,7 @@ adultos %>%
 
 adultos %>%
   filter(clase == "dur_servicio") %>% 
-  summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+  summarize(media = mean(valor), mediana = median(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
 ```
 
 ### Pediatría
@@ -270,7 +295,7 @@ pediatria %>%
 
 pediatria %>%
   filter(clase == "dur_servicio") %>% 
-  summarize(media = mean(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
+  summarize(media = mean(valor), mediana = median(valor), varianza = var(valor), sd = sd(valor), min = min(valor), max = max(valor))
 ```
 
 Distributions will only be fitted to the duration of the services, as the queues are of no interest, but rather an output of the discrete event simulation.
