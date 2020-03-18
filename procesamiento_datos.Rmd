@@ -29,6 +29,8 @@ library(tidyverse)
 library(fitdistrplus)
 library(lubridate)
 library(ggthemes)
+library(tsibble)
+library(fable)
 ```
 
 # Data reading
@@ -63,6 +65,27 @@ raw_data %>%
   geom_histogram(bins = 44, color = "black", fill = "skyblue") +
   labs(title = "Intervalo del estudio realizado por fecha",
        x = "Fecha del registro")
+
+ts <- raw_data %>%
+  distinct(salida_taquilla, .keep_all = TRUE) %>%
+  mutate(entrada = as.Date(salida_taquilla)) %>%
+  filter(salida_taquilla < ymd("2020-02-21")) %>% 
+  group_by(entrada) %>% 
+  summarize(n = n()) %>% 
+  as_tsibble()
+
+ts %>% 
+  model(ARIMA = ARIMA(n),
+        ets = ETS(n),
+        lineal = TSLM(n ~ trend() + season()),
+        nnet = NNETAR(n)) %>% 
+  forecast(h = "10 days") %>% 
+  autoplot(filter(ts), level = NULL)
+
+ts %>% 
+  model(lineal = TSLM(n ~ trend() + season())) %>% 
+  forecast(h = "10 days") %>% 
+  autoplot(filter(ts))
 ```
 
 Interval: 2020-01-07 12:51:12 to 2020-02-21 17:00:00
