@@ -198,7 +198,7 @@ triaje <- tidy_tiempos %>%
 triaje %>% 
   ggplot(aes(x = valor, fill = clase)) +
   geom_histogram(color = "black", bins = 60) +
-  facet_wrap(~clase, scales = "free", nrow = 2) +
+  facet_wrap(~clase, scales = "free", nrow = 1) +
   scale_x_continuous(labels = scales::comma) +
   scale_fill_brewer(palette = "Dark2") +
     labs(title = "Triaje",
@@ -322,13 +322,15 @@ priority_levels %>%
          nivelPrioridad = fct_relevel(nivelPrioridad, "TRIAJE 1", "TRIAJE 2", "TRIAJE 3", "TRIAJE 4")) %>% 
   ggplot(aes(x = name, y = value, fill = name)) +
   geom_col() +
-  coord_flip() +
-  facet_wrap(~nivelPrioridad, ncol = 1) +
+  facet_wrap(~nivelPrioridad, nrow = 1) +
   theme_economist() +
   scale_fill_economist() +
   labs(x = NULL,
-       y = "Probabilidades para cada triaje de ir a un servicio",
-       fill = "Servicio")
+       y = "Probabilidades de ir a un servicio",
+       fill = "Servicio") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggsave("plots/triaje_prior.png", width = 8, height = 2.5)
 ```
 
 
@@ -364,6 +366,7 @@ Null hyphotesis could be rejected, need further testing.
 fit_triage_lognormal <- fitdist(tiempos$dur_triage, distr = "lnorm", method = "mle")
 fit_triage_lognormal
 plot(fit_triage_lognormal)
+gofstat(fit_triage_lognormal)
 ```
 
 Data is definitely lognormal, need to conduct formal hypothesis testing here.
@@ -397,12 +400,11 @@ plot(fit_SAI_lognormal)
 
 ### Gamma distribution
 
-Need an scaling factor for the gamma to work, **need to reference this.**
-
 ```{r}
 fit_SAI_gamma <- fitdist(tiempos_SAI$dur_servicio, distr = "gamma", method = "mle", lower=c(0,0))
 fit_SAI_gamma
 plot(fit_SAI_gamma)
+gofstat(fit_SAI_gamma)
 ```
 
 SAI seems to be Gamma!
@@ -432,6 +434,7 @@ The fit doesn't work anyway, so no need to think about it anyway, because the PD
 fit_trauma_lognormal <- fitdist(tiempos_trauma$dur_servicio, distr = "lnorm", method = "mle")
 fit_trauma_lognormal
 plot(fit_trauma_lognormal)
+gofstat(fit_trauma_lognormal)
 ```
 
 No.
@@ -471,6 +474,7 @@ The fit doesn't work anyway, so no need to think about it anyway, because the PD
 fit_pediatria_lognormal <- fitdist(tiempos_pediatria$dur_servicio, distr = "lnorm", method = "mle")
 fit_pediatria_lognormal
 plot(fit_pediatria_lognormal)
+gofstat(fit_pediatria_lognormal)
 ```
 
 Parece que sí
@@ -519,6 +523,7 @@ The fit doesn't work anyway, so no need to think about it anyway, because the PD
 fit_adultos_lognormal <- fitdist(tiempos_adultos$dur_servicio, distr = "lnorm", method = "mle")
 fit_adultos_lognormal
 plot(fit_adultos_lognormal)
+gofstat(fit_adultos_lognormal)
 ```
 
 Parece que sí
@@ -545,6 +550,7 @@ cullen_fray_llegadas
 fit_llegadas_weibull <- fitdist(as.numeric(tiempo_llegadas), distr = "weibull", lower=c(0,0))
 fit_llegadas_weibull
 plot(fit_llegadas_weibull)
+gofstat(fit_llegadas_weibull)
 ```
 
 This will be the selected distribution for this variable. May need to consider the kind of triage to correctly estimate a distribution.
