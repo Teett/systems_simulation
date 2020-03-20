@@ -72,8 +72,30 @@ Interval: 2020-01-07 12:51:12 to 2020-02-21 17:00:00
 ```{r}
 raw_data %>%
   ggplot(aes(x = hour(entrada_triage), fill = servicio)) +
-  geom_histogram(bins = 44, color = "black") +
+  geom_histogram(bins = 24, color = "black") +
   labs(title = "Horas más concurridas por servicio")
+```
+
+Interval: 2020-01-07 12:51:12 to 2020-02-21 17:00:00
+
+## daily distribution by service
+
+```{r}
+raw_data %>%
+  ggplot(aes(x = day(entrada_triage), fill = servicio)) +
+  geom_histogram(bins = 31, color = "black") +
+  labs(title = "llegadas por dias del mes por servicio")
+```
+
+Interval: 2020-01-07 12:51:12 to 2020-02-21 17:00:00
+
+## weekday distribution by service
+
+```{r}
+raw_data %>%
+  ggplot(aes(x = weekdays(entrada_triage), fill = servicio)) +
+  geom_bar( color = "black") +
+  labs(title = "llegadas por dia de la semana por servicio")
 ```
 
 # Creation of the duration of events
@@ -90,7 +112,7 @@ tiempos <- clean_data %>%
          cola_servicio = entrada_servicio - fin_triage,
          dur_servicio = salida_servicio - entrada_servicio) %>%
   mutate_at(vars(cola_triage, dur_triage, cola_servicio, dur_servicio), as.numeric) %>% 
-  dplyr::select(atencion, servicio, servicio_detalle, nivelPrioridad, cola_triage, 
+  dplyr::select(atencion, servicio, servicio_detalle, nivelPrioridad,salida_taquilla, cola_triage, 
                 dur_triage, cola_servicio, dur_servicio) %>%
   filter_if(is.numeric, all_vars(. > 10)) %>% # Validado con asistenciales
   filter(cola_triage <= 14400, # Hasta 4 horas, validado con doctores de urgencias 
@@ -259,6 +281,37 @@ Distributions will only be fitted to the duration of the services, as the queues
 
 ```{r, fig.height=8, fig.width=9}
 priority_levels <- tiempos %>%
+  filter(servicio_detalle %in% c("Camillas SAI Adultos", "Traumas Urgencias", "ERA Pediatria", "Camillas SAI Pediatria", "Piso 4  Pediatria", "Bienestar Cirug\xeda", "Camillas Sala 1  Urgencias", "Camillas Sala 2  Urgencias", "Camillas Sala 3  Urgencias",
+  "Camillas Sala 4  Urgencias", "Camillas Sala 5 Urgencias",  "Camillas Sala 6  Urgencias", "Camillas Sala 7  Urgencias",
+  "Camillas Sala 8  Urgencias", "Fast track 1", "Fast track 2", "Fast track 3", "Sala de Reanimaci\xf3n", "Sala VIP UdeA")) %>% 
+  group_by(nivelPrioridad) %>% 
+  summarize(n = n(), 
+            SAI = sum(servicio_detalle == "Camillas SAI Adultos", na.rm = TRUE)/n(),
+            trauma = sum(servicio_detalle == "Traumas Urgencias", na.rm = TRUE)/n(),
+            pediatria = sum(servicio_detalle == "ERA Pediatria" | servicio_detalle == "Camillas SAI Pediatria" | servicio_detalle == "Piso 4  Pediatria", na.rm = TRUE)/n(),
+            adultos = sum(servicio == "Urgencias" & servicio_detalle != "Traumas Urgencias" & servicio_detalle != "Camillas SAI Adultos" & servicio_detalle != "Camillas SAI Pediatria" & servicio_detalle != "Piso 4  Pediatria", na.rm = TRUE)/n()) 
+
+priority_levels
+
+priority_levels %>% 
+  pivot_longer(cols = 3:6) %>%
+  mutate(name = as_factor(name),
+         nivelPrioridad = fct_relevel(nivelPrioridad, "TRIAJE 1", "TRIAJE 2", "TRIAJE 3", "TRIAJE 4")) %>% 
+  ggplot(aes(x = name, y = value, fill = name)) +
+  geom_col() +
+  coord_flip() +
+  facet_wrap(~nivelPrioridad, ncol = 1) +
+  theme_economist() +
+  scale_fill_economist() +
+  labs(x = NULL,
+       y = "Probabilidades para cada triaje de ir a un servicio",
+       fill = "Servicio")
+```
+
+## probabilidad de triaje
+
+```{r, fig.height=8, fig.width=9}
+priority_triaje <- tiempos %>%
   filter(servicio_detalle %in% c("Camillas SAI Adultos", "Traumas Urgencias", "ERA Pediatria", "Camillas SAI Pediatria", "Piso 4  Pediatria", "Bienestar Cirug\xeda", "Camillas Sala 1  Urgencias", "Camillas Sala 2  Urgencias", "Camillas Sala 3  Urgencias",
   "Camillas Sala 4  Urgencias", "Camillas Sala 5 Urgencias",  "Camillas Sala 6  Urgencias", "Camillas Sala 7  Urgencias",
   "Camillas Sala 8  Urgencias", "Fast track 1", "Fast track 2", "Fast track 3", "Sala de Reanimaci\xf3n", "Sala VIP UdeA")) %>% 
@@ -529,7 +582,7 @@ plot(fit_llegadas_lognormal)
 ### Exponential distribution
 
 ```{r}
-fit_llegadas_exp <- fitdist(as.numeric(tiempo_llegadas/1000), distr = "exp")
+fit_llegadas_exp <- fitdist(as.numeric(tiempo_llegadas/10), distr = "exp")
 fit_llegadas_exp
 plot(fit_llegadas_exp)
 ```
